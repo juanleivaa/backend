@@ -3,6 +3,7 @@ var User = require('../models/user');
 var bcrypt = require('bcrypt');
 // var SEED = require('../config/config').SEED;
 var salt = 10;
+var jwtHelper = require('../helpers/jwt');
 
 async function addUser(req, res) {
     // chequeamos si los datos que son requeridos vienen en la request
@@ -140,7 +141,6 @@ async function updUser(req, res) {
 
 async function login(req, res) {
     const { password, email } = req.body;
-
     try {
         const user = await User.findOne({ email }).exec();
 
@@ -154,10 +154,14 @@ async function login(req, res) {
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
         if (isPasswordCorrect) {
-            user.password = undefined;
+            // Generar el token JWT con la información del usuario
+            const token = await jwtHelper.generateJWT(user);
+
+            // Enviar el token al cliente
             return res.status(200).send({
                 ok: true,
                 message: 'Login correcto',
+                token,
                 user
             });
         }
@@ -174,6 +178,57 @@ async function login(req, res) {
         });
     }
 }
+
+
+
+
+
+// async function login(req, res) {
+
+
+//     // try {
+//     //     const token = await jwtHelper.generateJWT();
+//     //     console.log('token obtenido del helper', token);
+//     //     res.send({ token });
+//     // } catch (error) {
+//     //     console.error('Error al generar el token', error);
+//     //     res.status(500).send('Error al generar el token');
+//     // }
+
+//     const { password, email } = req.body;
+//     try {
+//         const user = await User.findOne({ email }).exec();
+
+//         if (!user) {
+//             return res.status(400).send({
+//                 ok: false,
+//                 message: 'Usuario no encontrado'
+//             });
+//         }
+
+//         const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+//         if (isPasswordCorrect) {
+//             user.password = undefined;
+//             return res.status(200).send({
+//                 ok: true,
+//                 message: 'Login correcto',
+//                 user
+//             });
+//         }
+
+//         return res.status(400).send({
+//             ok: false,
+//             message: 'Contraseña incorrecta'
+//         });
+//     } catch (error) {
+//         return res.status(500).send({
+//             ok: false,
+//             message: 'Error en la petición',
+//             error
+//         });
+//     }
+// }
 
 
 
