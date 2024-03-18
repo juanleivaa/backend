@@ -9,6 +9,11 @@ api.get('/user/:id', userController.getUser)
 api.delete('/user/:id', userController.delUser)
 api.put('/user/:id', userController.updUser)
 
+
+api.post('/login', userController.login)
+
+
+
 api.get('/users', userController.getUsers)
 
 module.exports = api;

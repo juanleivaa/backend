@@ -1,12 +1,11 @@
-//crear un esquema
-
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+
 
 const UserSchema = new Schema({
     name: {type:String, required:true},
     surname: String ,
-    email: {type:String, required:true},
+    email: {type:String, required:true , unique:true},
     password: {type:String, required:true},
     dir: String,
     dir_num: Number,
@@ -14,5 +13,7 @@ const UserSchema = new Schema({
     status: { type:Boolean, default:true },
     pets: [String]
 });
+
+
 
 module.exports = mongoose.model('User', UserSchema);
