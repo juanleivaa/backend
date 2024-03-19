@@ -48,16 +48,24 @@ async function addUser(req, res) {
     }
 }
 
-async function getUsers(req,res) {
-    let users = await User.find({})
+async function getUsers(req, res) {
+    // Verificar el rol del usuario
+    if (req.user.role !== 'CLIENT_ROLE') {
+        return res.status(403).send({
+            ok: false,
+            message: 'No tienes permiso para ver la lista de usuarios'
+        });
+    }
+
+    // Si el usuario tiene el rol adecuado, obtener la lista de usuarios
+    let users = await User.find({});
 
     let total = users.length;
     let per_page = 2;
     const total_pages = Math.ceil(total / per_page);
 
     res.status(200).send({
-
-        ok:true,
+        ok: true,
         msg: 'Lista de usuarios',
         users,
         total,
@@ -65,6 +73,7 @@ async function getUsers(req,res) {
         total_pages
     });
 }
+
 
 async function getUser(req, res) {
 
