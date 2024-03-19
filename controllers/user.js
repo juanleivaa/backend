@@ -67,6 +67,28 @@ async function getUsers(req,res) {
 }
 
 async function getUser(req, res) {
+
+
+    //si no envian id de usuario a buscar, devuelvo error pues no voy a saber de quien es que hay que bsucar datos
+    if(!req.params.id) 
+        return res.status(400).send({
+             ok: false, 
+             message: 'Falta el id del usuario' 
+        });
+
+
+    //si el usuario es un cliente y el id que quiere consultar no es el suyo, devuelvo error
+    if(req.user.role === 'CLIENT_ROLE' && req.user._id !== req.params.id){
+
+        return res.status(400).send({
+            ok: false,
+            message: 'No tienes permiso para ver este usuario, pues no es tuyo'
+        });
+
+    }
+
+
+
     const id = req.params.id;
     try {
         const user = await User.findById(id);
@@ -154,6 +176,9 @@ async function login(req, res) {
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
         if (isPasswordCorrect) {
+            user.password = undefined;
+
+
             // Generar el token JWT con la información del usuario
             const token = await jwtHelper.generateJWT(user);
 
@@ -180,55 +205,37 @@ async function login(req, res) {
 }
 
 
+// const login = async (req, res) => {
 
+//     const { passwordText, emailToFind } = req.body;
 
-
-// async function login(req, res) {
-
-
-//     // try {
-//     //     const token = await jwtHelper.generateJWT();
-//     //     console.log('token obtenido del helper', token);
-//     //     res.send({ token });
-//     // } catch (error) {
-//     //     console.error('Error al generar el token', error);
-//     //     res.status(500).send('Error al generar el token');
-//     // }
-
-//     const { password, email } = req.body;
 //     try {
-//         const user = await User.findOne({ email }).exec();
+//         const user = await User.findOne({ email: emailToFind }).exec();
 
-//         if (!user) {
-//             return res.status(400).send({
-//                 ok: false,
-//                 message: 'Usuario no encontrado'
-//             });
+//         if(!user) return res.status(400).send({ ok: false, message: 'Usuario no encontrado' });
+
+//         const passwordDBhashed = user.password;
+
+//         const result = await bcrypt.compare(passwordText, passwordDBhashed);
+
+//         if(result){
+//             user.password  = undefined
+//             req.user = user;
+//             const token = await jwtHelper.generateJWT(user);
+//             return res.status(200).send({ ok: true, message: 'Login correcto', token, user });
+//         } else {
+//             return res.status(400).send({ ok: false, message: 'Datos ingresados incorrectos' });
+        
 //         }
-
-//         const isPasswordCorrect = await bcrypt.compare(password, user.password);
-
-//         if (isPasswordCorrect) {
-//             user.password = undefined;
-//             return res.status(200).send({
-//                 ok: true,
-//                 message: 'Login correcto',
-//                 user
-//             });
-//         }
-
-//         return res.status(400).send({
-//             ok: false,
-//             message: 'Contraseña incorrecta'
-//         });
-//     } catch (error) {
-//         return res.status(500).send({
-//             ok: false,
-//             message: 'Error en la petición',
-//             error
-//         });
 //     }
-// }
+
+//     catch (error) {
+//         return res.status(500).send({ ok: false, message: 'Error en la petición', error });
+//     }
+// }       
+
+
+
 
 
 
