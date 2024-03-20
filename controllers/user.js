@@ -6,125 +6,195 @@ var salt = 10;
 var jwtHelper = require('../helpers/jwt');
 var { v4: uuid } = require('uuid');
 
+
+
+//===================================
+//======FUNCIONES DE CONTROL=========
+//===========MIDDLEWARES=============
+//===================================
+
+//QUE ROL TIENE EL USUARIO QUE QUIERE HACER ALGO?
+const checkClientRole = (req, res, next) => {
+    if (req.user.role === 'CLIENT_ROLE') {
+        return res.status(400).send({
+            ok: false,
+            message: 'No tienes permiso para realizar esta acción ; CLIENT_ROLE'
+        });
+    }
+    next();
+};
+
+// const checkClientPermission = (req, res, next) => {
+//     // Verifica si el usuario es de rol CLIENT_ROLE
+//     if (req.user.role === 'CLIENT_ROLE') {
+//         const id = req.query.id || req.params.id; // Obtén el id del usuario a modificar desde la query o los parámetros
+
+//         // Verifica si el id del usuario a modificar coincide con el id del usuario autenticado
+//         if (req.user.id !== id) {
+//             return res.status(400).send({
+//                 ok: false,
+//                 message: 'No tienes permiso para modificar este usuario porque no es el tuyo'
+//             });
+//         }
+//     }
+//     // Si el usuario tiene el rol adecuado o si el id coincide, continúa con la siguiente función
+//     next();
+// };
+
+
+
+
+//===================================
+//=====FUNCIONES DE LAS RUTAS========
+//===================================
+
 async function addUser(req, res) {
+    // Verifica el rol del usuario
+    checkClientRole(req, res, async () => {
+        // Si el usuario tiene el rol permitido, continúa con la lógica de la función
+        try {
+            // chequeamos si los datos que son requeridos vienen en la request
+            if (!req.body.password || !req.body.email || !req.body.name) {
+                return res.status(400).send({
+                    ok: false,
+                    msg: 'Faltan datos obligatorios'
+                });
+            }
 
-    if(req.user.role === 'CLIENT_ROLE'){
+            // Verificar si el email ya está en uso
+            const existingUser = await User.findOne({ email: req.body.email }).exec();
+            if (existingUser) {
+                return res.status(400).send({
+                    ok: false,
+                    msg: 'El email ya está en uso'
+                });
+            }
 
-        return res.status(400).send({
-            ok: false,
-            message: 'No tienes permiso para agregar usuarios ; CLIENT_ROLE'
-        });
+            // Crear el nuevo usuario
+            let user = new User(req.body);
 
-    }
+            // Cifrar la contraseña
+            const hashedPassword = await bcrypt.hash(user.password, salt);
+            user.password = hashedPassword;
 
+            // Guardar el usuario en la base de datos
+            user = await user.save();
 
-    // chequeamos si los datos que son requeridos vienen en la request
-    if (!req.body.password || !req.body.email || !req.body.name) {
-        return res.status(400).send({
-            ok: false,
-            msg: 'Faltan datos obligatorios'
-        });
-    }
-
-    try {
-        // Verificar si el email ya está en uso
-        const existingUser = await User.findOne({ email: req.body.email }).exec();
-        if (existingUser) {
-            return res.status(400).send({
+            return res.status(200).send({
+                ok: true,
+                message: 'Usuario guardado',
+                user: user
+            });
+        } catch (err) {
+            return res.status(500).send({
                 ok: false,
-                msg: 'El email ya está en uso'
+                message: 'Error en la petición',
+                error: err
             });
         }
-
-        // Crear el nuevo usuario
-        let user = new User(req.body);
-
-        // Cifrar la contraseña
-        const hashedPassword = await bcrypt.hash(user.password, salt);
-        user.password = hashedPassword;
-
-        // Guardar el usuario en la base de datos
-        user = await user.save();
-
-        return res.status(200).send({
-            ok: true,
-            message: 'Usuario guardado',
-            user: user
-        });
-    } catch (err) {
-        return res.status(500).send({
-            ok: false,
-            message: 'Error en la petición',
-            error: err
-        });
-    }
+    });
 }
 
 async function getUsers(req, res) {
+    // Verifica el rol del usuario
+    checkClientRole(req, res, async () => {
+        // Si el usuario tiene el rol permitido, continúa con la lógica de la función
+        try {
+            let users = await User.find({})
 
+            let total = users.length;
+            let per_page = 2;
+            const total_pages = Math.ceil(total / per_page);
 
-
-    //si el usuario es un cliente y el id que quiere consultar no es el suyo, devuelvo error
-    if(req.user.role === 'CLIENT_ROLE'){
-
-        return res.status(400).send({
-            ok: false,
-            message: 'No tienes permiso para ver los usuarios'
-        });
-
-    }
-
-
-    let users = await User.find({})
-
-    let total = users.length;
-    let per_page = 2;
-    const total_pages = Math.ceil(total / per_page);
-
-    res.status(200).send({
-        ok: true,
-        msg: 'Lista de usuarios',
-        users,
-        total,
-        per_page,
-        total_pages
+            res.status(200).send({
+                ok: true,
+                msg: 'Lista de usuarios',
+                users,
+                total,
+                per_page,
+                total_pages
+            });
+        } catch (err) {
+            return res.status(500).send({
+                ok: false,
+                message: 'Error en la petición',
+                error: err
+            });
+        }
     });
 }
 
 async function delUser(req, res) {
     const id = req.params.id;
 
-
-    if(req.user.role === 'CLIENT_ROLE'){
-
-        return res.status(400).send({
-            ok: false,
-            message: 'No tienes permiso para ver los usuarios'
-        });
-
-    }
-
-
-    try {
-        const userDeleted = await User.findByIdAndDelete(id);
-        if (!userDeleted) {
-            return res.status(400).send({
+    // Verifica el rol del usuario
+    checkClientRole(req, res, async () => {
+        // Si el usuario tiene el rol permitido, continúa con la lógica de la función
+        try {
+            const userDeleted = await User.findByIdAndDelete(id);
+            if (!userDeleted) {
+                return res.status(400).send({
+                    ok: false,
+                    msg: 'Usuario no encontrado',
+                });
+            }
+            return res.status(200).send({
+                ok: true,
+                message: 'Usuario eliminado',
+                userDeleted
+            });
+        } catch (error) {
+            return res.status(500).send({
                 ok: false,
-                msg: 'Usuario no encontrado',
+                message: 'Error en la petición',
+                error
             });
         }
-        return res.status(200).send({
-            ok: true,
-            message: 'Usuario eliminado',
-            userDeleted
-        });
-    } catch (error) {
-        return res.status(500).send({
-            ok: false,
-            message: 'Error en la petición',
-            error
-        });
-    }
+    });
+}
+
+async function uploadAvatar(req, res) {
+    const id = req.query.id;
+    const maxSize = 4194304; //
+
+    // Verifica el rol del usuario
+    checkClientRole(req, res, async () => {
+        // Si el usuario tiene el rol permitido, continúa con la lógica de la función
+
+        //id fue mandado?
+        if (!id) return res.status(400).send({ ok: false, message: 'Falta el id del usuario' });
+        //archivo fue enviado?
+        if (!req.files || Object.keys(req.files).length === 0) { return res.status(400).send({ ok: false, message: 'No se ha enviado ninguna imagen' }) }
+
+        const file = req.files.avatar;
+        const [imgType, extension] = file.mimetype.split('/');
+
+        //el archivo es una imagen?
+        if (imgType !== 'image') return res.status(400).send({ ok: false, message: 'El archivo enviado no es una imagen' });
+        //el archivo es muy grande?
+        if (file.size > maxSize) return res.status(400).send({ ok: false, message: 'El archivo es demasiado grande' });
+
+        try {
+            const user = await User.findById(id);
+            if (!user) return res.status(400).send({ ok: false, message: 'Usuario no encontrado' });
+
+            //para que cuando guarde la imagen, nunca se repita
+            const imgID = uuid();
+            const imageName = imgID + '.' + extension;
+            //guardar la imagen 
+            const uploadPath = `./uploads/user-avatar/` + imgID + '.' + extension;
+
+            const userUpdated = await User.findByIdAndUpdate(id, { avatar: imageName }, { new: true });
+            userUpdated.password = undefined;
+
+            file.mv(uploadPath, (err) => {
+                if (err) return res.status(500).send({ ok: false, message: 'Error al guardar la imagen', error: err });
+                res.status(200).send({ ok: true, message: 'Imagen subida', userUpdated });
+            });
+        } catch (err) {
+            return res.status(500).send({ ok: false, message: 'Error en la petición', error: err });
+        }
+    });
 }
 
 async function login(req, res) {
@@ -172,87 +242,6 @@ async function login(req, res) {
 
 
 
-async function uploadAvatar(req, res) {
-    const id = req.query.id;
-    const maxSize = 4194304; //
-
-    //id fue mandado?
-    if (!id) return res.status(400).send({ ok: false, message: 'Falta el id del usuario' });
-    //archivo fue enviado?
-    if (!req.files || Object.keys(req.files).length === 0) { return res.status(400).send({ ok: false, message: 'No se ha enviado ninguna imagen' }) }
-
-    const file = req.files.avatar;
-    const [imgType, extension] = file.mimetype.split('/');
-
-    //el archivo es una imagen?
-    if (imgType !== 'image') return res.status(400).send({ ok: false, message: 'El archivo enviado no es una imagen' });
-    //el archivo es muy grande?
-    if (file.size > maxSize) return res.status(400).send({ ok: false, message: 'El archivo es demasiado grande' });
-
-    try {
-        const user = await User.findById(id);
-        if (!user) return res.status(400).send({ ok: false, message: 'Usuario no encontrado' });
-
-        //para que cuando guarde la imagen, nunca se repita
-        const imgID = uuid();
-        const imageName = imgID + '.' + extension;
-        //guardar la imagen 
-        const uploadPath = `./uploads/user-avatar/` + imgID + '.' + extension;
-
-        await User.findByIdAndUpdate(id, { avatar: imageName }, { new: true });
-
-        file.mv(uploadPath, (err) => {
-            if (err) return res.status(500).send({ ok: false, message: 'Error al guardar la imagen', error: err });
-            res.status(200).send({ ok: true, message: 'Imagen subida' });
-        });
-    } catch (err) {
-        return res.status(500).send({ ok: false, message: 'Error en la petición', error: err });
-    }
-}
-
-
-
-
-
-
-
-// async function uploadAvatar(req, res) {
-//     const id = req.query.id;
-//     const maxSize = 4194304; //
-
-//     //id fue mandando?
-//     if (!id) return res.status(400).send({ ok: false, message: 'Falta el id del usuario' });
-//     //archivo fue enviado?
-//     if (!req.files || Object.keys(req.files).length === 0) { return res.status(400).send({ ok: false, message: 'No se ha enviado ninguna imagen' }) }
-
-//     const file = req.files.avatar;
-//     const [imgType, extension] = file.mimetype.split('/');
-
-//     //el archivo es una imagen?
-//     if (imgType !== 'image') return res.status(400).send({ ok: false, message: 'El archivo enviado no es una imagen' });
-//     //el archivo es muy grande?
-//     if (file.size > maxSize) return res.status(400).send({ ok: false, message: 'El archivo es demasiado grande' });
-
-//     const user = await User.findById(id);
-//     if (!user) return res.status(400).send({ ok: false, message: 'Usuario no encontrado' })
-
-//     //para que cuando guarde la imagen, nunca se repita
-//     const imgID = uuid();
-//     const imageName = imgID + '.' + extension;
-//     //guardar la imagen 
-//     uploadPath = `./uploads/user-avatar/` + imgID + '.' + extension;
-
-//     User.findByIdAndUpdate(id, { avatar: imageName }, { new: true }, (err, userUpdated) => {
-//         if (err) return res.status(500).send({ ok: false, message: 'Error al guardar la imagen', error: err });
-//     })
-
-//     file.mv(uploadPath, (err) => {
-//         if (err) return res.status(500).send({ ok: false, message: 'Error al guardar la imagen', error: err });
-//         res.status(200).send({ ok: true, message: 'Imagen subida' });
-//     })
-
-//     res.status(200).send({ ok: true, message: 'Imagen subida' });
-// }
 
 
 
@@ -261,15 +250,6 @@ async function uploadAvatar(req, res) {
 
 
 
-
-
-
-//===================================
-//=========CORREGIR=============
-//====================================
- 
-//cuando quiero buscar usuarios por el id del user logueado, me da error, cuando 
-//si deberia dejarme si el id es el mismo del user que quiere buscar o updatear
 
 
 async function getUser(req, res) {
