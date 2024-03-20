@@ -13,7 +13,7 @@ const generateJWT = (user) => {
                 role: user.role
             }, // payload
             SEED, // semilla o private key
-            { expiresIn: 360, algorithm: 'HS512' }, // options
+            { expiresIn: 3600, algorithm: 'HS512' }, // options
             (error, token) => {
                 if (error) {
                     reject('No se pudo generar el token');

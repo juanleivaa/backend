@@ -2,9 +2,6 @@ var jwt = require('jsonwebtoken');
 var SEED = require('../config/config').SEED;
 
 
-
-
-
 const ensureAuth = (req, res, next) => {
     // Verificar si existe un token en la cabecera de autorización
     if (!req.headers.authorization) {
@@ -24,14 +21,6 @@ const ensureAuth = (req, res, next) => {
                 ok: false,
                 message: 'Token no válido',
                 error
-            });
-        }
-
-        // Verificar el rol del usuario
-        if (decoded.role === 'CLIENT_ROLE' && decoded._id !== req.params.id) {
-            return res.status(403).send({
-                ok: false,
-                message: 'No tienes permiso para realizar esta acción ; CLIENT_ROLE'
             });
         }
 

@@ -14,8 +14,7 @@ const UserSchema = new Schema({
     dir: String,
     dir_num: Number,
     role: {type: String , default:'CLIENT_ROLE' , enum: rolesValidos},
-    status: { type:Boolean, default:true },
-    pets: [String]
+    avatar: {type: String, default: 'https://www.gravatar.com/avatar/' + Math.random() + '?s=200&d=identicon&r=PG'},
 });
 
 
