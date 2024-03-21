@@ -1,8 +1,10 @@
 var express = require('express');
 var app = express();
+var cors = require('cors');
 
-
-
+//PERMITIR PETICIONES DE CUALQUIER ORIGEN
+app.use(express.json());
+app.use(cors());
 
 //CREA UNA RUTA
 app.get('/', function(req, res) {

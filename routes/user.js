@@ -10,7 +10,7 @@ api.post('/user',           ensureAuth ,                                        
 api.get('/user/:id',        ensureAuth ,                                            userController.getUser)
 api.delete('/user/:id',     ensureAuth ,                                            userController.delUser)
 api.put('/user/:id',        ensureAuth ,                                            userController.updUser)
-api.get('/users',           ensureAuth ,                                            userController.getUsers)
+api.get('/users',           ensureAuth, userController.getUsers)
 
 //lo haremos con la query de postman, por eso no aclaro el id de la persona a la que le queremos cargar la imagen
 

@@ -24,25 +24,6 @@ const checkClientRole = (req, res, next) => {
     next();
 };
 
-// const checkClientPermission = (req, res, next) => {
-//     // Verifica si el usuario es de rol CLIENT_ROLE
-//     if (req.user.role === 'CLIENT_ROLE') {
-//         const id = req.query.id || req.params.id; // Obtén el id del usuario a modificar desde la query o los parámetros
-
-//         // Verifica si el id del usuario a modificar coincide con el id del usuario autenticado
-//         if (req.user.id !== id) {
-//             return res.status(400).send({
-//                 ok: false,
-//                 message: 'No tienes permiso para modificar este usuario porque no es el tuyo'
-//             });
-//         }
-//     }
-//     // Si el usuario tiene el rol adecuado o si el id coincide, continúa con la siguiente función
-//     next();
-// };
-
-
-
 
 //===================================
 //=====FUNCIONES DE LAS RUTAS========
@@ -121,7 +102,56 @@ async function getUsers(req, res) {
                 error: err
             });
         }
-    });
+    })
+
+}
+
+async function getUser(req, res) {
+
+
+    //si no envian id de usuario a buscar, devuelvo error pues no voy a saber de quien es que hay que bsucar datos
+    if(!req.params.id) 
+        return res.status(400).send({
+             ok: false, 
+             message: 'Falta el id del usuario' 
+        });
+
+
+
+        const id = req.params.id;
+    //si el usuario es un cliente y el id que quiere consultar no es el suyo, devuelvo error
+    if(req.user.role === 'CLIENT_ROLE' && req.user.id !== req.params.id){
+        
+        return res.status(400).send({
+            ok: false,
+            message: 'No tienes permiso para ver este usuario, pues no es tuyo'
+        });
+
+    }
+
+
+
+
+    try {
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(400).send({
+                ok: false,
+                msg: 'Usuario no encontrado',
+            });
+        }
+        return res.status(200).send({
+            ok: true,
+            message: 'Usuario encontrado',
+            user
+        });
+    } catch (error) {
+        return res.status(500).send({
+            ok: false,
+            message: 'Error en la petición',
+            error
+        });
+    }
 }
 
 async function delUser(req, res) {
@@ -151,6 +181,84 @@ async function delUser(req, res) {
             });
         }
     });
+}
+
+async function updUser(req, res) {
+
+    const id = req.params.id;
+    let updateData = req.body;
+
+    if(req.user.role === 'CLIENT_ROLE' && req.user.id !== id){
+            return res.status(400).send({
+                ok: false,
+                message: 'No tienes permiso para modificar este usuario, pues no es tuyo'
+            });
+    }
+
+
+    try {
+        const userUpdated = await User.findByIdAndUpdate(id, updateData, { new: true });
+        if (!userUpdated) {
+            return res.status(400).send({
+                ok: false,
+                message: 'Usuario no encontrado',
+            });
+        }
+        return res.status(200).send({
+            ok: true,
+            message: 'Usuario actualizado',
+            userUpdated
+        });
+    } catch (err) {
+        return res.status(500).send({
+            ok: false,
+            message: 'Error en la petición',
+            error: err
+        });
+    }
+}
+
+async function login(req, res) {
+    const { password, email } = req.body;
+    try {
+        const user = await User.findOne({ email }).exec();
+
+        if (!user) {
+            return res.status(400).send({
+                ok: false,
+                message: 'Usuario no encontrado'
+            });
+        }
+
+        const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+        if (isPasswordCorrect) {
+            user.password = undefined;
+
+
+            // Generar el token JWT con la información del usuario
+            const token = await jwtHelper.generateJWT(user);
+
+            // Enviar el token al cliente
+            return res.status(200).send({
+                ok: true,
+                message: 'Login correcto',
+                token,
+                user
+            });
+        }
+
+        return res.status(400).send({
+            ok: false,
+            message: 'Contraseña incorrecta'
+        });
+    } catch (error) {
+        return res.status(500).send({
+            ok: false,
+            message: 'Error en la petición',
+            error
+        });
+    }
 }
 
 async function uploadAvatar(req, res) {
@@ -197,48 +305,6 @@ async function uploadAvatar(req, res) {
     });
 }
 
-async function login(req, res) {
-    const { password, email } = req.body;
-    try {
-        const user = await User.findOne({ email }).exec();
-
-        if (!user) {
-            return res.status(400).send({
-                ok: false,
-                message: 'Usuario no encontrado'
-            });
-        }
-
-        const isPasswordCorrect = await bcrypt.compare(password, user.password);
-
-        if (isPasswordCorrect) {
-            user.password = undefined;
-
-
-            // Generar el token JWT con la información del usuario
-            const token = await jwtHelper.generateJWT(user);
-
-            // Enviar el token al cliente
-            return res.status(200).send({
-                ok: true,
-                message: 'Login correcto',
-                token,
-                user
-            });
-        }
-
-        return res.status(400).send({
-            ok: false,
-            message: 'Contraseña incorrecta'
-        });
-    } catch (error) {
-        return res.status(500).send({
-            ok: false,
-            message: 'Error en la petición',
-            error
-        });
-    }
-}
 
 
 
@@ -252,89 +318,6 @@ async function login(req, res) {
 
 
 
-async function getUser(req, res) {
-
-
-    //si no envian id de usuario a buscar, devuelvo error pues no voy a saber de quien es que hay que bsucar datos
-    if(!req.params.id) 
-        return res.status(400).send({
-             ok: false, 
-             message: 'Falta el id del usuario' 
-        });
-
-
-
-        const id = req.params.id;
-
-    //si el usuario es un cliente y el id que quiere consultar no es el suyo, devuelvo error
-    if(req.user.role === 'CLIENT_ROLE' && req.user._id !== req.params.id){
-
-        return res.status(400).send({
-            ok: false,
-            message: 'No tienes permiso para ver este usuario, pues no es tuyo'
-        });
-
-    }
-
-
-
-
-    try {
-        const user = await User.findById(id);
-        if (!user) {
-            return res.status(400).send({
-                ok: false,
-                msg: 'Usuario no encontrado',
-            });
-        }
-        return res.status(200).send({
-            ok: true,
-            message: 'Usuario encontrado',
-            user
-        });
-    } catch (error) {
-        return res.status(500).send({
-            ok: false,
-            message: 'Error en la petición',
-            error
-        });
-    }
-}
-
-async function updUser(req, res) {
-
-    const id = req.params.id;
-    let updateData = req.body;
-
-    if(req.user.role === 'CLIENT_ROLE' && req.user._id !== id){
-            return res.status(400).send({
-                ok: false,
-                message: 'No tienes permiso para modificar este usuario, pues no es tuyo'
-            });
-    }
-
-
-    try {
-        const userUpdated = await User.findByIdAndUpdate(id, updateData, { new: true });
-        if (!userUpdated) {
-            return res.status(400).send({
-                ok: false,
-                message: 'Usuario no encontrado',
-            });
-        }
-        return res.status(200).send({
-            ok: true,
-            message: 'Usuario actualizado',
-            userUpdated
-        });
-    } catch (err) {
-        return res.status(500).send({
-            ok: false,
-            message: 'Error en la petición',
-            error: err
-        });
-    }
-}
 
 
 

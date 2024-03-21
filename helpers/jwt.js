@@ -10,7 +10,16 @@ const generateJWT = (user) => {
             { 
                 name: user.name,
                 surname: user.surname,
-                role: user.role
+                role: user.role,
+                email: user.email,
+                avatar: user.avatar,
+                active: user.active,
+                dir: user.dir,
+                dir_num: user.dir_num,
+                id: user._id
+
+
+
             }, // payload
             SEED, // semilla o private key
             { expiresIn: 3600, algorithm: 'HS512' }, // options
